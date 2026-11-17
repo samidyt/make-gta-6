@@ -1,53 +1,62 @@
-// Keyboard and pointer input. Held keys give a steering direction; one-shot presses (start or
-// restart, pause) are queued as bit flags and taken once by the loop, so a press between two
-// frames is never lost and never counted twice.
+// input.js — keyboard + mouse state for Solmar City.
+// One clear job: track which keys are down, mouse drag deltas for the camera,
+// and click events for shooting. The game loop reads this, never the DOM directly.
 
-export const ACTION_CONFIRM = 1;
-export const ACTION_PAUSE = 2;
+export const keys = Object.create(null); // code -> true while held
+export const pressed = Object.create(null); // code -> true only on the frame it went down
+export const mouse = {
+  dx: 0, dy: 0,       // accumulated drag delta since last consume
+  down: false,        // left button held
+  clicked: false,     // left button pressed this frame
+  dragging: false,
+  x: 0, y: 0,
+};
 
-const LEFT = new Set(['ArrowLeft', 'KeyA']);
-const RIGHT = new Set(['ArrowRight', 'KeyD']);
-const CONFIRM = new Set(['Space', 'Enter']);
-const PAUSE = new Set(['KeyP', 'Escape']);
+let lastX = 0, lastY = 0;
 
-export function createInput(target) {
-  let left = false;
-  let right = false;
-  let actions = 0;
-
-  window.addEventListener('keydown', (event) => {
-    if (LEFT.has(event.code)) left = true;
-    else if (RIGHT.has(event.code)) right = true;
-    else if (CONFIRM.has(event.code)) {
-      if (!event.repeat) actions |= ACTION_CONFIRM;
-    } else if (PAUSE.has(event.code)) {
-      if (!event.repeat) actions |= ACTION_PAUSE;
-    } else return;
-    event.preventDefault();
+export function initInput(canvas) {
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') e.preventDefault();
+    if (!e.repeat) pressed[e.code] = true;
+    keys[e.code] = true;
   });
-  window.addEventListener('keyup', (event) => {
-    if (LEFT.has(event.code)) left = false;
-    else if (RIGHT.has(event.code)) right = false;
-  });
-  // A key released while the tab is hidden never sends keyup: let go of everything on blur.
+  window.addEventListener('keyup', (e) => { keys[e.code] = false; });
   window.addEventListener('blur', () => {
-    left = false;
-    right = false;
+    for (const k of Object.keys(keys)) keys[k] = false;
+    mouse.down = false; mouse.dragging = false;
   });
-  target.addEventListener('pointerdown', () => {
-    actions |= ACTION_CONFIRM;
+  canvas.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    mouse.down = true; mouse.clicked = true; mouse.dragging = true;
+    lastX = e.clientX; lastY = e.clientY; mouse.x = e.clientX; mouse.y = e.clientY;
   });
+  window.addEventListener('mousemove', (e) => {
+    mouse.x = e.clientX; mouse.y = e.clientY;
+    if (!mouse.dragging) return;
+    mouse.dx += e.clientX - lastX;
+    mouse.dy += e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+  });
+  window.addEventListener('mouseup', (e) => {
+    if (e.button !== 0) return;
+    mouse.down = false; mouse.dragging = false;
+  });
+  // Keep the context menu from breaking camera drags.
+  canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+}
 
-  return {
-    /** -1 for left, 1 for right, 0 for neither or both. */
-    direction() {
-      return (right ? 1 : 0) - (left ? 1 : 0);
-    },
-    /** The one-shot presses since the last call, as ACTION_* flags. */
-    takeActions() {
-      const taken = actions;
-      actions = 0;
-      return taken;
-    },
-  };
+// Call once per frame after the game has read the state.
+export function endFrameInput() {
+  for (const k of Object.keys(pressed)) pressed[k] = false;
+  mouse.dx = 0; mouse.dy = 0; mouse.clicked = false;
+}
+
+export function axisPos() {
+  // WASD as a -1..1 movement vector (x = strafe right, y = forward).
+  let x = 0, y = 0;
+  if (keys.KeyW || keys.ArrowUp) y += 1;
+  if (keys.KeyS || keys.ArrowDown) y -= 1;
+  if (keys.KeyD || keys.ArrowRight) x += 1;
+  if (keys.KeyA || keys.ArrowLeft) x -= 1;
+  return { x, y };
 }

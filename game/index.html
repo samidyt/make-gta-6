@@ -3,17 +3,174 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Block Dodger</title>
+<title>SOLMAR CITY — Open World Crime</title>
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #11141b; }
-  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-  /* Read aloud, never shown: the status line screen readers announce. */
-  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0b1c2c;
+    font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif; color: #fff; }
+  #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #hud { position: fixed; inset: 0; pointer-events: none; user-select: none; }
+  .panel { background: rgba(8, 18, 28, 0.62); border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 10px; backdrop-filter: blur(3px); }
+  /* top right: money + wanted */
+  #top-right { position: absolute; top: 14px; right: 16px; text-align: right; }
+  #cash { font-size: 30px; font-weight: 800; color: #7dff9a; text-shadow: 0 2px 6px #000; letter-spacing: 1px; }
+  #stars { font-size: 26px; letter-spacing: 4px; color: #ffd23f; text-shadow: 0 0 10px rgba(255,210,63,.7), 0 2px 4px #000; min-height: 32px; }
+  #clock { font-size: 15px; font-weight: 600; color: #eaf6ff; text-shadow: 0 1px 3px #000; margin-top: 2px; }
+  /* top left: health + armour-ish bars */
+  #top-left { position: absolute; top: 14px; left: 16px; }
+  .bar-label { font-size: 11px; font-weight: 700; letter-spacing: 2px; color: #cfe8ff; text-shadow: 0 1px 3px #000; }
+  .bar { width: 220px; height: 12px; background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.25);
+    border-radius: 6px; overflow: hidden; margin: 2px 0 8px; }
+  .bar > div { height: 100%; transition: width .15s; }
+  #health-fill { background: linear-gradient(90deg, #2ee06f, #8dff6a); }
+  #armor-fill { background: linear-gradient(90deg, #2f9dff, #7fd4ff); }
+  /* mission objective, top centre */
+  #objective { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); max-width: 560px;
+    padding: 10px 18px; text-align: center; font-size: 15px; font-weight: 600; line-height: 1.35; }
+  #objective .mission-name { color: #ffd23f; font-size: 12px; letter-spacing: 3px; font-weight: 800; }
+  #objective .obj-text { color: #fff; }
+  /* bottom right: speed + weapon */
+  #bottom-right { position: absolute; right: 16px; bottom: 16px; text-align: right; }
+  #speed { font-size: 44px; font-weight: 800; text-shadow: 0 2px 8px #000; line-height: 1; display: none; }
+  #speed small { font-size: 15px; font-weight: 600; color: #cfe8ff; }
+  #weapon { font-size: 15px; font-weight: 700; margin-top: 6px; color: #ffe9a8; text-shadow: 0 1px 3px #000; }
+  #hint { font-size: 13px; color: #dff1ff; margin-top: 4px; text-shadow: 0 1px 3px #000; }
+  /* bottom left: minimap */
+  #minimap-wrap { position: absolute; left: 16px; bottom: 16px; width: 190px; height: 190px;
+    border-radius: 50%; overflow: hidden; border: 3px solid rgba(255,255,255,.35);
+    box-shadow: 0 4px 18px rgba(0,0,0,.5); background: #0e2a1e; }
+  #minimap { width: 100%; height: 100%; display: block; }
+  #map-n { position: absolute; left: 50%; top: 2px; transform: translateX(-50%); font-size: 12px;
+    font-weight: 800; color: #fff; text-shadow: 0 1px 3px #000; }
+  /* centre messages */
+  #centre { position: absolute; left: 50%; top: 34%; transform: translate(-50%, -50%);
+    text-align: center; width: 100%; }
+  #big-msg { font-size: 64px; font-weight: 900; letter-spacing: 6px; color: #fff;
+    text-shadow: 0 4px 24px rgba(0,0,0,.8); display: none; }
+  #sub-msg { font-size: 20px; font-weight: 600; color: #ffd23f; text-shadow: 0 2px 8px #000; display: none; margin-top: 8px; }
+  #toast { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%);
+    padding: 8px 16px; font-size: 14px; font-weight: 600; display: none; }
+  /* overlays */
+  .overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(160deg, rgba(6,24,38,.88), rgba(20,8,32,.82)); z-index: 10; }
+  .card { max-width: 640px; width: 92%; padding: 34px 40px; text-align: center;
+    background: rgba(10, 26, 40, 0.85); border: 1px solid rgba(255,255,255,.18); border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+  .title { font-size: 54px; font-weight: 900; letter-spacing: 4px; margin: 0;
+    background: linear-gradient(90deg, #ffd23f, #ff7a3d, #ff3d7f); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .subtitle { font-size: 15px; letter-spacing: 5px; color: #9fd8ff; font-weight: 700; margin: 4px 0 18px; }
+  .card p { font-size: 15px; line-height: 1.6; color: #d9ecff; margin: 8px 0; }
+  .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 22px; text-align: left;
+    font-size: 13px; color: #cfe8ff; margin: 16px auto; max-width: 480px; }
+  .controls b { color: #ffd23f; }
+  .btn { pointer-events: auto; cursor: pointer; display: inline-block; margin: 6px 4px; padding: 12px 30px;
+    font-size: 17px; font-weight: 800; letter-spacing: 1px; color: #101820; background: #ffd23f;
+    border: none; border-radius: 10px; box-shadow: 0 4px 0 #b98d00; }
+  .btn:hover { filter: brightness(1.07); }
+  .btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #b98d00; }
+  .btn.secondary { background: #2f9dff; color: #fff; box-shadow: 0 4px 0 #155a9e; }
+  .btn.ghost { background: rgba(255,255,255,.12); color: #fff; box-shadow: none; border: 1px solid rgba(255,255,255,.3); }
+  #start-screen .card { text-align: center; }
+  .hidden { display: none !important; }
+  #wasted { background: radial-gradient(ellipse at center, rgba(120,0,0,.55), rgba(0,0,0,.88)); }
+  #wasted .title { background: none; color: #ff4444; -webkit-text-fill-color: #ff4444; }
+  #busted { background: radial-gradient(ellipse at center, rgba(0,40,120,.55), rgba(0,0,0,.88)); }
+  #busted .title { background: none; color: #4da3ff; -webkit-text-fill-color: #4da3ff; }
+  #phone { position: absolute; left: 50%; bottom: 170px; transform: translateX(-50%); width: 320px;
+    padding: 12px 16px; display: none; }
+  #phone .from { color: #ffd23f; font-weight: 800; font-size: 13px; letter-spacing: 1px; }
+  #phone .msg { font-size: 14px; line-height: 1.45; margin-top: 3px; }
 </style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js" } }
+</script>
 </head>
 <body>
-<canvas id="game" aria-label="Block Dodger: move the paddle left and right to dodge falling blocks and catch coins"></canvas>
-<p id="status" role="status" aria-live="polite"></p>
+<canvas id="scene"></canvas>
+<div id="hud">
+  <div id="top-left">
+    <div class="bar-label">DANNY VEGA</div>
+    <div class="bar"><div id="health-fill" style="width:100%"></div></div>
+    <div class="bar-label">ARMOUR</div>
+    <div class="bar"><div id="armor-fill" style="width:0%"></div></div>
+  </div>
+  <div id="top-right">
+    <div id="cash">$0</div>
+    <div id="stars"></div>
+    <div id="clock">09:00</div>
+  </div>
+  <div id="objective" class="panel hidden">
+    <div class="mission-name" id="mission-name"></div>
+    <div class="obj-text" id="objective-text"></div>
+  </div>
+  <div id="minimap-wrap"><canvas id="minimap" width="190" height="190"></canvas><div id="map-n">N</div></div>
+  <div id="bottom-right">
+    <div id="speed">0<small> km/h</small></div>
+    <div id="weapon">Fists</div>
+    <div id="hint">WASD move &middot; E enter car &middot; F punch &middot; Click shoot</div>
+  </div>
+  <div id="centre"><div id="big-msg"></div><div id="sub-msg"></div></div>
+  <div id="toast" class="panel"></div>
+  <div id="phone" class="panel"><div class="from" id="phone-from">RICO</div><div class="msg" id="phone-msg"></div></div>
+</div>
+
+<div id="start-screen" class="overlay">
+  <div class="card">
+    <h1 class="title">SOLMAR CITY</h1>
+    <div class="subtitle">OPEN WORLD &middot; CRIME &middot; SUN &amp; TROUBLE</div>
+    <p>Welcome to Solmar — a sun-soaked coastal city where the palms are tall and the
+    tempers are short. Danny Vega is back in town, broke and owed a favour by Rico,
+    the fixer who runs the docks. Steal cars, dodge the Solmar PD, run Rico's jobs
+    and build your name — or end up wasted or busted trying.</p>
+    <div class="controls">
+      <div><b>W A S D</b> — move / drive</div><div><b>Mouse drag</b> — camera</div>
+      <div><b>Shift</b> — sprint</div><div><b>Space</b> — jump / handbrake</div>
+      <div><b>E</b> — enter / exit car</div><div><b>F</b> — punch</div>
+      <div><b>Click</b> — shoot pistol</div><div><b>R</b> — reload</div>
+      <div><b>1 / 2</b> — fists / pistol</div><div><b>P / Esc</b> — pause</div>
+      <div><b>M</b> — mission list</div><div><b>G</b> — save game</div>
+    </div>
+    <button class="btn" id="btn-start">START ENGINE</button>
+    <button class="btn secondary hidden" id="btn-continue">CONTINUE SAVED GAME</button>
+    <p style="font-size:12px; color:#8fb8d8;">An original game. No real city, person or brand — all names and places are invented.</p>
+  </div>
+</div>
+
+<div id="pause-screen" class="overlay hidden">
+  <div class="card">
+    <h1 class="title" style="font-size:40px;">PAUSED</h1>
+    <p id="pause-stats"></p>
+    <button class="btn" id="btn-resume">RESUME</button>
+    <button class="btn secondary" id="btn-save">SAVE GAME</button>
+    <button class="btn ghost" id="btn-missions">MISSIONS</button>
+    <button class="btn ghost" id="btn-reset">RESET SAVE</button>
+  </div>
+</div>
+
+<div id="mission-screen" class="overlay hidden">
+  <div class="card">
+    <h1 class="title" style="font-size:34px;">RICO'S JOBS</h1>
+    <p id="mission-list"></p>
+    <button class="btn" id="btn-mission-close">BACK</button>
+  </div>
+</div>
+
+<div id="wasted" class="overlay hidden">
+  <div class="card">
+    <h1 class="title">WASTED</h1>
+    <p id="wasted-text">Solmar PD sends its regards. You dropped $100 at the hospital.</p>
+    <button class="btn" id="btn-wasted">GET UP</button>
+  </div>
+</div>
+
+<div id="busted" class="overlay hidden">
+  <div class="card">
+    <h1 class="title">BUSTED</h1>
+    <p id="busted-text">The cops hauled you in. Bail cost you $150.</p>
+    <button class="btn" id="btn-busted">WALK FREE</button>
+  </div>
+</div>
+
 <script type="module" src="./src/main.js"></script>
 </body>
 </html>
