@@ -42,11 +42,16 @@ export const MISSION_DEFS = [
 ];
 
 export function createMissions(scene, landmarks) {
-  // The beacon: a tall glowing column + a bouncing ring at the objective.
-  const beaconMat = new THREE.MeshBasicMaterial({ color: 0xffd23f, transparent: true, opacity: 0.35 });
-  const beacon = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 60, 12, 1, true), beaconMat);
+  // The beacon: a tall glowing column + a bright inner core + a bouncing ring
+  // at the objective. The core keeps the column readable from across the city.
+  const beaconMat = new THREE.MeshBasicMaterial({ color: 0xffd23f, transparent: true, opacity: 0.5 });
+  const beacon = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.6, 60, 12, 1, true), beaconMat);
   beacon.visible = false;
   scene.add(beacon);
+  const coreMat = new THREE.MeshBasicMaterial({ color: 0xffe27a, transparent: true, opacity: 0.75 });
+  const beaconCore = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 60, 8, 1, true), coreMat);
+  beaconCore.visible = false;
+  scene.add(beaconCore);
   const ringMat = new THREE.MeshBasicMaterial({ color: 0xffd23f, transparent: true, opacity: 0.9, side: THREE.DoubleSide });
   const ring = new THREE.Mesh(new THREE.RingGeometry(2.4, 3.0, 24), ringMat);
   ring.rotation.x = -Math.PI / 2;
@@ -103,11 +108,15 @@ export function createMissions(scene, landmarks) {
     if (target) {
       beacon.visible = true;
       ring.visible = true;
+      beaconCore.visible = true;
       beacon.position.set(target.x, 30, target.z);
+      beaconCore.position.set(target.x, 30, target.z);
+      beaconMat.opacity = 0.45 + Math.sin(performance.now() / 400) * 0.08;
       ring.position.set(target.x, 0.15 + Math.sin(performance.now() / 300) * 0.25, target.z);
     } else {
       beacon.visible = false;
       ring.visible = false;
+      beaconCore.visible = false;
     }
     if (!state.active) return;
     const a = state.active;

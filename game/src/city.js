@@ -67,6 +67,43 @@ function makeRoadTexture(alongU) {
   return tex;
 }
 
+function makeCrosswalkTexture(horizontal) {
+  // Zebra stripes on a transparent tile: white bars, asphalt showing between.
+  // horizontal=true: bars run along U (crossings of east-west roads);
+  // false: bars run along V (crossings of north-south roads).
+  const c = document.createElement('canvas');
+  c.width = 64; c.height = 64;
+  const g = c.getContext('2d');
+  g.clearRect(0, 0, 64, 64);
+  g.fillStyle = 'rgba(255,255,255,0.85)';
+  for (let i = 0; i < 7; i += 1) {
+    const o = 4 + i * 9;
+    if (horizontal) g.fillRect(0, o, 64, 5);
+    else g.fillRect(o, 0, 5, 64);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+function makeSkyTexture() {
+  // Vertical gradient for the sky dome: deep blue at the zenith, pale haze
+  // at the horizon. Canvas row 0 (top) maps to the dome's zenith.
+  const c = document.createElement('canvas');
+  c.width = 8; c.height = 256;
+  const g = c.getContext('2d');
+  const grad = g.createLinearGradient(0, 0, 0, 256);
+  grad.addColorStop(0, '#2f6fb8');
+  grad.addColorStop(0.4, '#6ea8d8');
+  grad.addColorStop(0.52, '#cfe8f5');
+  grad.addColorStop(1, '#cfe8f5');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 8, 256);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
 function makePalm(scale) {
   const palm = new THREE.Group();
   const trunk = new THREE.Mesh(cylGeo, trunkMat);
@@ -153,6 +190,14 @@ export function buildCity(scene, rng) {
   // Sky, sun and fog — the sun-soaked look.
   scene.background = new THREE.Color(0x87c5e8);
   scene.fog = new THREE.Fog(0x9fd0e8, 140, 420);
+  // Gradient sky dome (drawn first, never fogged): deeper blue overhead,
+  // pale haze at the horizon — the flat background colour stays as fallback.
+  const sky = new THREE.Mesh(
+    new THREE.SphereGeometry(700, 24, 16),
+    new THREE.MeshBasicMaterial({ map: makeSkyTexture(), side: THREE.BackSide, fog: false, depthWrite: false }),
+  );
+  sky.renderOrder = -1;
+  scene.add(sky);
   const hemi = new THREE.HemisphereLight(0xbfe3ff, 0x8a7a5a, 0.9);
   scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xfff2cc, 2.4);
@@ -209,6 +254,27 @@ export function buildCity(scene, rng) {
     rz.position.set(s, 0.035, 0);
     rz.receiveShadow = true;
     scene.add(rz);
+  }
+
+  // Painted crosswalks at every intersection: zebra stripes just off the
+  // crossing, one across each road. Shared textures/materials, no colliders.
+  const crossTexH = makeCrosswalkTexture(true);
+  const crossTexV = makeCrosswalkTexture(false);
+  const crossMatH = new THREE.MeshLambertMaterial({ map: crossTexH, transparent: true, depthWrite: false });
+  const crossMatV = new THREE.MeshLambertMaterial({ map: crossTexV, transparent: true, depthWrite: false });
+  const crossGeoEW = new THREE.PlaneGeometry(4, road);
+  const crossGeoNS = new THREE.PlaneGeometry(road, 4);
+  for (const sx of streets) {
+    for (const sz of streets) {
+      const cw1 = new THREE.Mesh(crossGeoEW, crossMatH);
+      cw1.rotation.x = -Math.PI / 2;
+      cw1.position.set(sx + 9, 0.05, sz);
+      scene.add(cw1);
+      const cw2 = new THREE.Mesh(crossGeoNS, crossMatV);
+      cw2.rotation.x = -Math.PI / 2;
+      cw2.position.set(sx, 0.05, sz + 9);
+      scene.add(cw2);
+    }
   }
 
   // Facade materials (shared across buildings).

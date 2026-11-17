@@ -122,6 +122,22 @@ export function showPhone(h, from, msg, ms = 6000) {
   phoneTimer = setTimeout(() => { h.phone.style.display = 'none'; }, ms);
 }
 
+// Hide every transient popup at once (phone / toast / big message) and cancel
+// their timers. Screenshot staging calls this so no popup can cover the frame
+// — otherwise the phone's 6 s timer races the shot-ready signal and the
+// dialog appears in some captures and not others.
+export function hidePopups(h) {
+  if (toastTimer) { clearTimeout(toastTimer); toastTimer = null; }
+  if (bigTimer) { clearTimeout(bigTimer); bigTimer = null; }
+  if (phoneTimer) { clearTimeout(phoneTimer); phoneTimer = null; }
+  const el = h || defaultHud;
+  if (!el) return;
+  el.toast.style.display = 'none';
+  el.bigMsg.style.display = 'none';
+  el.subMsg.style.display = 'none';
+  el.phone.style.display = 'none';
+}
+
 export function hideOverlays() {
   for (const id of ['start-screen', 'pause-screen', 'mission-screen', 'wasted', 'busted']) {
     $(id).classList.add('hidden');

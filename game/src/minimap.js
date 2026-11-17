@@ -39,15 +39,19 @@ export function createMinimap(canvas) {
         ctx.fillRect(px(x - CITY.block / 2), pz(z - CITY.block / 2), CITY.block * scale, CITY.block * scale);
       }
     }
-    // Mission marker (pulsing yellow diamond).
+    // Mission marker (pulsing yellow diamond with a white halo so it reads
+    // against dark streets even at a glance).
     const target = world.missionTarget;
     if (target) {
       const pulse = 1 + Math.sin(performance.now() / 220) * 0.25;
       ctx.save();
       ctx.translate(px(target.x), pz(target.z));
       ctx.rotate(Math.PI / 4);
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      const h = 9 * pulse;
+      ctx.fillRect(-h / 2, -h / 2, h, h);
       ctx.fillStyle = '#ffd23f';
-      const s = 5 * pulse;
+      const s = 6.5 * pulse;
       ctx.fillRect(-s / 2, -s / 2, s, s);
       ctx.restore();
     }

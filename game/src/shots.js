@@ -19,36 +19,44 @@ export function stageShot(name, game) {
   player.state.health = GAME.startHealth;
 
   if (name === 'chase') {
-    // Driving east along the avenue with 3 stars and police cars on the tail.
-    // A long straight run, so the car is still moving when the shot is taken.
+    // Driving east along the avenue with 3 stars and police cars converging
+    // from ahead: they read as a pursuit in frame, and at shot time (~0.5 s
+    // of game time) none has reached the player yet, so none overlaps the car.
     const car = game.parkedCars[0];
     game.putPlayerInCar(car, true);
-    car.pos.set(-150, 0, 90);
+    car.pos.set(-160, 0, 90);
     car.heading = Math.PI / 2; // face +x: eastbound along the avenue
-    car.speed = 26;
+    car.speed = 32;
     player.state.heading = car.heading;
     player.setCameraYaw(Math.PI / 2);
     police.addWanted(3, 'shot staging');
-    // Pursuit staged where the camera sees it: two police cars ahead in the
-    // neighbouring lanes (in frame), one behind (minimap blip, catching up).
-    const pc1 = game.spawnPoliceCarAt(car.pos.x + 14, car.pos.z - 6, Math.PI / 2);
-    pc1.speed = 26;
-    const pc2 = game.spawnPoliceCarAt(car.pos.x + 26, car.pos.z + 6, Math.PI / 2);
-    pc2.speed = 24;
-    const pc3 = game.spawnPoliceCarAt(car.pos.x - 16, car.pos.z + 2, Math.PI / 2);
-    pc3.speed = 28;
+    // Pursuit staged ahead where the camera sees it: three police cars
+    // converging from up the avenue, spaced so the formation holds its shape.
+    const pc1 = game.spawnPoliceCarAt(car.pos.x + 35, car.pos.z - 6, Math.PI / 2);
+    pc1.speed = 30;
+    const pc2 = game.spawnPoliceCarAt(car.pos.x + 50, car.pos.z + 6, Math.PI / 2);
+    pc2.speed = 30;
+    const pc3 = game.spawnPoliceCarAt(car.pos.x + 22, car.pos.z + 3, Math.PI / 2);
+    pc3.speed = 30;
     missions.startMission('m1', game.worldApi());
-    game.showBig('THE HEAT IS ON', '3 stars — lose them or get busted');
   } else if (name === 'mission') {
-    // On foot at Rico's corner, mission 1 active, looking down the avenue
-    // (street, peds and traffic in frame; beacon marker on the minimap).
+    // On foot at Rico's corner, mission 1 on its second step: the beacon
+    // column marks Rico's corner just ahead, and the player faces it.
+    // (Yaw first: teleport snaps the camera for the current yaw.)
+    player.setCameraYaw(Math.PI * 1.25); // look south-west, toward the beacon
+    player.cam.pitch = 0.3;
     player.teleport(lm.rico.x + 6, lm.rico.z + 6);
-    player.setCameraYaw(Math.PI * 0.75);
+    player.state.heading = Math.PI * 1.25;
     missions.startMission('m1', game.worldApi());
+    missions.state.active.step = 1; // 'Bring the package back to Rico's corner'
   } else if (name === 'city') {
-    // On the beach looking back at the skyline: scale + palms + water.
-    player.teleport(30, CITY.beachZ + 8);
-    player.setCameraYaw(Math.PI); // look north, into the city
+    // On the beach looking east-north-east along the shoreline: the shore
+    // cuts diagonally across the frame — water on the right, beach palms
+    // ahead, the skyline to the left — instead of a flat band of sand.
+    player.setCameraYaw(Math.PI * 0.6); // look ENE, along the beach
+    player.cam.pitch = 0.18;
+    player.teleport(-120, CITY.beachZ + 22);
+    player.state.heading = Math.PI * 0.6;
     game.state.cash = 1250;
   } else {
     // cover (default): driving through downtown, mission 1 running, traffic + peds.
@@ -56,12 +64,28 @@ export function stageShot(name, game) {
     game.putPlayerInCar(car, true);
     car.pos.set(-30, 0, 90);
     car.heading = Math.PI / 2; // eastbound along the avenue
-    car.speed = 26;
+    car.speed = 30;
     player.state.heading = car.heading;
     player.setCameraYaw(Math.PI / 2);
     missions.startMission('m1', game.worldApi());
-    game.showToast('Steal a car, run Rico\'s jobs, dodge the Solmar PD');
+    // Two traffic cars on the avenue ahead: one eastbound in the player's
+    // lane, one oncoming — the street reads alive instead of empty.
+    const t0 = game.traffic.cars[0];
+    const t1 = game.traffic.cars[1];
+    if (t0 && t0.traffic) {
+      t0.traffic.route = { street: 90, horizontal: true, dir: 1 };
+      t0.traffic.along = -5;
+      t0.heading = Math.PI / 2;
+    }
+    if (t1 && t1.traffic) {
+      t1.traffic.route = { street: 90, horizontal: true, dir: -1 };
+      t1.traffic.along = 25;
+      t1.heading = -Math.PI / 2;
+    }
   }
+  // No popup may cover the frame: the phone (Rico's texts), the welcome toast
+  // and any big message are hidden deterministically, not left to a timer race.
+  game.hidePopups();
   // Signal the screenshot harness once the scene has settled: after 12 frames
   // on a fast machine, or after 8 s of wall time on a slow software renderer.
   game.state.shotReady = false;

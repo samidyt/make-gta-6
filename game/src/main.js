@@ -4,7 +4,7 @@
 // the frame loop, and own the screens (start / pause / missions / wasted /
 // busted) plus the ?shot= staging hook.
 import * as THREE from 'three';
-import { CITY, GAME, makeRng } from './config.js';
+import { CITY, GAME, CAR_CFG, makeRng } from './config.js';
 import { initInput, pressed, keys, endFrameInput, mouse } from './input.js';
 import { buildCity } from './city.js';
 import { createPlayer } from './player.js';
@@ -14,11 +14,11 @@ import { createPedestrians } from './pedestrians.js';
 import { createPolice } from './police.js';
 import { createMissions } from './missions.js';
 import { createCombat } from './combat.js';
-import { initHud, updateHud, showToast, showBig, showPhone, hideOverlays, showOverlay } from './hud.js';
+import { initHud, updateHud, showToast, showBig, showPhone, hidePopups, hideOverlays, showOverlay } from './hud.js';
 import { createMinimap } from './minimap.js';
 import { hasSave, saveGame, loadGame, clearSave } from './save.js';
 import { stageShot, SHOT_NAMES } from './shots.js';
-import { unlockAudio, sfx, setSiren } from './audio.js';
+import { unlockAudio, sfx, setSiren, setEngine } from './audio.js';
 
 const params = new URLSearchParams(window.location.search);
 const shotParam = params.get('shot');
@@ -305,6 +305,7 @@ const game = {
   hideStartScreen: () => hideOverlays(),
   showBig: (t, s) => showBig(hud, t, s),
   showToast: (t) => showToast(hud, t),
+  hidePopups: () => hidePopups(hud),
 };
 
 // --- Frame loop -------------------------------------------------------------
@@ -391,6 +392,10 @@ function frame() {
   } else if (state.started && state.paused) {
     if (pressed.KeyP || pressed.Escape) togglePause();
   }
+
+  // Engine loop: hums while driving, silent otherwise (no-op until audio unlocks).
+  setEngine(running && !!player.state.inCar,
+    player.state.inCar ? Math.abs(player.state.inCar.speed) / CAR_CFG.maxSpeed : 0);
 
   // HUD + minimap (throttled to every other frame for the minimap).
   if (state.started) {

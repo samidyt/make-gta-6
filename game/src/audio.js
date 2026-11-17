@@ -1,5 +1,6 @@
 // audio.js — tiny WebAudio synth for Solmar City.
-// One clear job: oscillator-only bleeps (shoot, pickup, siren, punch, mission).
+// One clear job: oscillator-only bleeps (shoot, pickup, siren, punch, mission)
+// plus two continuous loops (police siren, engine hum) while they are needed.
 // No audio files, no network. Created lazily on the first user gesture.
 
 let ctx = null;
@@ -92,5 +93,38 @@ export function setSiren(on) {
   } else if (!on && sirenNodes) {
     try { sirenNodes.osc.stop(); sirenNodes.lfo.stop(); } catch { /* already stopped */ }
     sirenNodes = null;
+  }
+}
+
+// Engine loop while driving: a low sawtooth hum through a lowpass filter,
+// rising in pitch and brightness with speed. Call every frame with the
+// current speed fraction (0..1); idempotent, silent until audio is unlocked.
+let engineNodes = null;
+export function setEngine(on, speed01) {
+  if (on && !engineNodes) {
+    const c = ensure();
+    if (!c) return;
+    const osc = c.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(55, c.currentTime);
+    const filter = c.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(300, c.currentTime);
+    const gain = c.createGain();
+    gain.gain.setValueAtTime(0.03, c.currentTime);
+    osc.connect(filter).connect(gain).connect(c.destination);
+    osc.start();
+    engineNodes = { osc, filter, gain };
+  } else if (!on && engineNodes) {
+    try { engineNodes.osc.stop(); } catch { /* already stopped */ }
+    engineNodes = null;
+    return;
+  }
+  if (engineNodes) {
+    const c = ctx;
+    const s = Math.max(0, Math.min(1, speed01 || 0));
+    engineNodes.osc.frequency.setTargetAtTime(55 + s * 110, c.currentTime, 0.08);
+    engineNodes.filter.frequency.setTargetAtTime(300 + s * 900, c.currentTime, 0.08);
+    engineNodes.gain.gain.setTargetAtTime(0.03 + s * 0.03, c.currentTime, 0.1);
   }
 }
