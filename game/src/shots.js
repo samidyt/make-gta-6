@@ -29,18 +29,21 @@ export function stageShot(name, game) {
     player.state.heading = car.heading;
     player.setCameraYaw(Math.PI / 2);
     police.addWanted(3, 'shot staging');
-    // Pre-spawn the pursuit right behind the player.
-    for (let i = 0; i < 3; i += 1) {
-      const pc = game.spawnPoliceCarAt(car.pos.x - 18 - i * 10, car.pos.z + (i - 1) * 5, Math.PI / 2);
-      pc.speed = 26;
-    }
+    // Pursuit staged where the camera sees it: two police cars ahead in the
+    // neighbouring lanes (in frame), one behind (minimap blip, catching up).
+    const pc1 = game.spawnPoliceCarAt(car.pos.x + 14, car.pos.z - 6, Math.PI / 2);
+    pc1.speed = 26;
+    const pc2 = game.spawnPoliceCarAt(car.pos.x + 26, car.pos.z + 6, Math.PI / 2);
+    pc2.speed = 24;
+    const pc3 = game.spawnPoliceCarAt(car.pos.x - 16, car.pos.z + 2, Math.PI / 2);
+    pc3.speed = 28;
     missions.startMission('m1', game.worldApi());
     game.showBig('THE HEAT IS ON', '3 stars — lose them or get busted');
   } else if (name === 'mission') {
-    // On foot at Rico's corner, mission 1 active, looking south-east toward
-    // the docks so the golden beacon is visible down the avenue.
+    // On foot at Rico's corner, mission 1 active, looking down the avenue
+    // (street, peds and traffic in frame; beacon marker on the minimap).
     player.teleport(lm.rico.x + 6, lm.rico.z + 6);
-    player.setCameraYaw(0.65);
+    player.setCameraYaw(Math.PI * 0.75);
     missions.startMission('m1', game.worldApi());
   } else if (name === 'city') {
     // On the beach looking back at the skyline: scale + palms + water.

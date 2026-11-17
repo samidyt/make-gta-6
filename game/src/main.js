@@ -228,7 +228,7 @@ function togglePause() {
   state.paused = !state.paused;
   if (state.paused) {
     document.getElementById('pause-stats').textContent =
-      `Cash $${state.cash.toLocaleString('en-US')}  ·  Jobs done ${missions.state.completed.length}/3  ·  Wanted ${'★'.repeat(police.wanted) || 'none'}`;
+      `Cash $${state.cash.toLocaleString('en-US')}  ·  Jobs done ${missions.state.completed.length}/3  ·  Wanted ${police.wanted > 0 ? `${police.wanted}/5 stars` : 'none'}`;
     showOverlay('pause-screen');
   } else {
     hideOverlays();

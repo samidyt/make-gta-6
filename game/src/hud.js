@@ -4,6 +4,23 @@
 import { GAME } from './config.js';
 
 const $ = (id) => document.getElementById(id);
+
+// Wanted stars as inline SVG: the ★/☆ glyphs are missing from some system
+// fonts (they render as tofu boxes), so the stars are drawn, not typed.
+const STAR_POINTS = '12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26';
+let lastStars = -1;
+function renderStars(el, wanted) {
+  if (wanted === lastStars) return;
+  lastStars = wanted;
+  if (wanted <= 0) { el.innerHTML = ''; return; }
+  const color = wanted >= 3 ? '#ff5a4d' : '#ffd23f';
+  let html = '';
+  for (let i = 0; i < GAME.maxWanted; i += 1) {
+    const filled = i < wanted;
+    html += `<svg width="26" height="26" viewBox="0 0 24 24" style="margin-left:3px;vertical-align:middle;filter:drop-shadow(0 0 5px rgba(0,0,0,.8))"><polygon points="${STAR_POINTS}" fill="${filled ? color : 'rgba(255,255,255,0.10)'}" stroke="${filled ? '#6b4d00' : 'rgba(255,255,255,0.6)'}" stroke-width="1"/></svg>`;
+  }
+  el.innerHTML = html;
+}
 let toastTimer = null;
 let bigTimer = null;
 let phoneTimer = null;
@@ -35,9 +52,7 @@ export function initHud() {
 
 export function updateHud(h, world) {
   h.cash.textContent = `$${world.cash.toLocaleString('en-US')}`;
-  const stars = '★'.repeat(world.wanted) + '☆'.repeat(GAME.maxWanted - world.wanted);
-  h.stars.textContent = world.wanted > 0 ? stars : '';
-  h.stars.style.color = world.wanted >= 3 ? '#ff5a4d' : '#ffd23f';
+  renderStars(h.stars, world.wanted);
   const hour = Math.floor(world.hour);
   const min = Math.floor((world.hour - hour) * 60);
   h.clock.textContent = `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}  SOLMAR`;
