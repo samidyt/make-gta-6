@@ -19,26 +19,28 @@ export function stageShot(name, game) {
   player.state.health = GAME.startHealth;
 
   if (name === 'chase') {
-    // Driving north up the avenue with 3 stars and police cars on the tail.
+    // Driving east along the avenue with 3 stars and police cars on the tail.
+    // A long straight run, so the car is still moving when the shot is taken.
     const car = game.parkedCars[0];
     game.putPlayerInCar(car, true);
-    car.pos.set(-30, 0, -150);
-    car.heading = Math.PI; // face -z: northbound up the avenue
+    car.pos.set(-150, 0, 90);
+    car.heading = Math.PI / 2; // face +x: eastbound along the avenue
     car.speed = 26;
     player.state.heading = car.heading;
-    player.setCameraYaw(Math.PI);
+    player.setCameraYaw(Math.PI / 2);
     police.addWanted(3, 'shot staging');
     // Pre-spawn the pursuit right behind the player.
     for (let i = 0; i < 3; i += 1) {
-      const pc = game.spawnPoliceCarAt(car.pos.x + (i - 1) * 6, car.pos.z + 18 + i * 10, Math.PI);
+      const pc = game.spawnPoliceCarAt(car.pos.x - 18 - i * 10, car.pos.z + (i - 1) * 5, Math.PI / 2);
       pc.speed = 26;
     }
     missions.startMission('m1', game.worldApi());
     game.showBig('THE HEAT IS ON', '3 stars — lose them or get busted');
   } else if (name === 'mission') {
-    // On foot at Rico's corner, mission 1 active, beacon visible down the street.
+    // On foot at Rico's corner, mission 1 active, looking south-east toward
+    // the docks so the golden beacon is visible down the avenue.
     player.teleport(lm.rico.x + 6, lm.rico.z + 6);
-    player.setCameraYaw(Math.PI * 0.75);
+    player.setCameraYaw(0.65);
     missions.startMission('m1', game.worldApi());
   } else if (name === 'city') {
     // On the beach looking back at the skyline: scale + palms + water.
@@ -51,23 +53,28 @@ export function stageShot(name, game) {
     game.putPlayerInCar(car, true);
     car.pos.set(-30, 0, 90);
     car.heading = Math.PI / 2; // eastbound along the avenue
-    car.speed = 18;
+    car.speed = 26;
     player.state.heading = car.heading;
     player.setCameraYaw(Math.PI / 2);
     missions.startMission('m1', game.worldApi());
     game.showToast('Steal a car, run Rico\'s jobs, dodge the Solmar PD');
   }
-  // Let the world settle a few frames, then signal the screenshot harness.
+  // Signal the screenshot harness once the scene has settled: after 12 frames
+  // on a fast machine, or after 8 s of wall time on a slow software renderer.
   game.state.shotReady = false;
   let frames = 0;
+  let done = false;
+  const ready = () => {
+    if (done) return;
+    done = true;
+    game.state.shotReady = true;
+    window.__shotReady = true;
+  };
   const tick = () => {
     frames += 1;
-    if (frames >= 45) {
-      game.state.shotReady = true;
-      window.__shotReady = true;
-    } else {
-      requestAnimationFrame(tick);
-    }
+    if (frames >= 12) ready();
+    else if (!done) requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);
+  setTimeout(ready, 8000);
 }

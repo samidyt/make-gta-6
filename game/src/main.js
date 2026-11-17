@@ -93,6 +93,7 @@ function wasted(cause) {
   const fine = Math.min(100, state.cash);
   addCash(-fine);
   police.clearWanted();
+  if (missions.state.active) missions.abortActive(api);
   if (player.state.inCar) exitCar(player);
   document.getElementById('wasted-text').textContent =
     `Solmar PD sends its regards (${cause}). The hospital took $${fine}.`;
@@ -104,6 +105,7 @@ function busted() {
   const fine = Math.min(150, state.cash);
   addCash(-fine);
   police.clearWanted();
+  if (missions.state.active) missions.abortActive(api);
   if (player.state.inCar) exitCar(player);
   showOverlay('busted');
 }
@@ -137,8 +139,8 @@ function worldApi() {
       if (state.ramCooldown > 0) return;
       state.ramCooldown = 0.8;
       if (player.state.inCar) {
-        player.state.inCar.health -= 8;
-        player.state.inCar.speed *= 0.6;
+        player.state.inCar.health -= 5;
+        player.state.inCar.speed *= 0.7;
         sfx.crash();
       } else {
         damagePlayer(10, 'run down by the PD');
@@ -207,6 +209,7 @@ function applySaveData(data) {
 // --- Screens ----------------------------------------------------------------
 function startGame(fresh) {
   hideOverlays();
+  document.getElementById('hud').style.display = 'block';
   state.started = true;
   state.paused = false;
   if (fresh) {
@@ -446,5 +449,8 @@ if (isShot) {
   };
   idleCam();
 }
+// Debug/test handle: lets automated play-tests inspect live state
+// (wanted level, cash, missions) without touching the game's own code paths.
+window.__solmar = { state, police, player, missions, parkedCars, traffic, peds, combat, city };
 void mouse; void keys; void CITY;
 requestAnimationFrame(frame);
