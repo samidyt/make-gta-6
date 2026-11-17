@@ -69,6 +69,8 @@ export function stageShot(name, game) {
     done = true;
     game.state.shotReady = true;
     window.__shotReady = true;
+    // DOM signal too: some harnesses read the document, not window properties.
+    document.documentElement.setAttribute('data-shot-ready', '1');
   };
   const tick = () => {
     frames += 1;
